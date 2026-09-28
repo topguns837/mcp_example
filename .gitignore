@@ -17,3 +17,9 @@ notes_server.log
 
 # IDE specific files
 .vscode/
+
+# Local Ollama model cache (bind-mounted into the ollama container at
+# /root/.ollama, downloaded at runtime by startScript.sh -- track the
+# folder itself so it exists after a fresh clone, but never its contents).
+/ollama-data/*
+!/ollama-data/.gitkeep

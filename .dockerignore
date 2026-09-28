@@ -3,3 +3,4 @@ __pycache__/
 .git/
 .env
 notes_server.log
+ollama-data/

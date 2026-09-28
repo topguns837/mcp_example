@@ -2,7 +2,12 @@ services:
   ollama:
     image: ollama/ollama:latest
     volumes:
-      - ollama-data:/root/.ollama
+      # Bind-mount into the repo (rather than an opaque Docker-managed named
+      # volume) so the model cache is visible/inspectable on the host. The
+      # folder is tracked in git (via ollama-data/.gitkeep) but its contents
+      # are gitignored -- see .gitignore. Ollama runs as root in this image,
+      # so downloaded files will be root-owned on the host.
+      - ./ollama-data:/root/.ollama
     ports:
       # Optional: lets you curl/debug Ollama from the host at localhost:11434.
       - "${OLLAMA_PORT:-11434}:11434"
@@ -43,5 +48,4 @@ services:
     stdin_open: true
 
 volumes:
-  ollama-data:
   app-venv:

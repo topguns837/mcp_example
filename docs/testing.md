@@ -97,6 +97,7 @@ See `docs/docker.md` for what this does.
 | Command | Effect |
 |---|---|
 | *(anything else)* | Chat with the model. It may decide to call `create_note` or `search_notes` on its own. |
+| `/tools` | List the tools available right now, read directly from the live MCP `list_tools()` result -- no model involved, so it's always correct (see the reliability note below for why this exists). |
 | `/summarize <slug>` | Fetch the `summarize_note` prompt for that note and have the model produce the summary. |
 | `/reply <slug> [tone]` | Fetch the `draft_reply` prompt (tone defaults to `friendly`) and have the model draft it. |
 | `/help` | Show the command list. |
@@ -124,3 +125,13 @@ need a large model. That said, small models occasionally answer in plain
 text instead of calling a tool on the first try; if that happens, rephrase
 more directly ("call search_notes for X") or size up via `OLLAMA_MODEL`
 (e.g. `qwen2.5:3b` or `llama3.1:8b`) if you want more consistent tool-calling.
+
+**A sharper version of that problem**: asking the model *about itself* --
+"what tools do you have", "list your MCP tools" -- is unreliable in the
+other direction. Rather than answering in plain text, it will sometimes
+call `create_note` or `search_notes` anyway (even with made-up arguments,
+which can leave a stray note behind), because merely having a non-empty
+`tools` list in the request measurably biases small models toward calling
+*something*. This isn't fixable by prompt-tuning alone -- it was tested
+against both `qwen2.5:1.5b` and `qwen2.5:3b` with no reliable improvement.
+Use `/tools` for a guaranteed-correct answer to that specific question.
