@@ -147,3 +147,80 @@ project all at once.
   `create_note` creates a new file under `notes/` and it becomes visible as a new
   resource; calling `search_notes` finds it; invoking `summarize_note` returns a
   templated prompt referencing the note's embedded content.
+
+---
+
+## Part 4 — Phase 2: Docs, a Local-LLM Client, and Dockerization
+
+Once the notes-server above was working, the goal shifted to pushing this as a
+public code sample: restructured docs, a way for colleagues without a Claude
+subscription to try it, and a single-command way to run the whole thing.
+
+**Docs restructure** -- `README.md` stayed the quickstart hub; deep content moved
+into `docs/`: `architecture.md` (protocol flows, plus the "two protocols meeting"
+point below), `testing.md` (all four ways to exercise the server), `docker.md`
+(the Docker/tmux setup).
+
+**`local_client.py`** -- a second MCP client (alongside `trace_client.py`),
+driven by a local LLM via [Ollama](https://ollama.com) instead of a hosted
+model, so colleagues without API access can still try the server. Key
+decisions, in the order they came up:
+- **Ollama over llama-cpp-python/vLLM** -- best tool-calling support and
+  Docker distribution story for a teaching project.
+- **`qwen2.5:1.5b` as the default model**, not a typical 7-8B default --
+  this server only has two trivial tools, so a compact (~1GB) model was
+  explicitly requested and is sufficient.
+- **`httpx` as an explicit dependency**, not the `ollama` PyPI package --
+  keeps the raw request/response JSON visible (same "show the wire
+  protocol" spirit as `trace_client.py`), and this SDK version's `mcp[cli]`
+  no longer pulls in plain `httpx` transitively (it vendors a renamed
+  `httpx2`/`httpcore2`), so relying on it transitively would have broken
+  outright.
+- **A real, verified agent loop**: `session.list_tools()` -> convert each
+  `Tool.input_schema` to Ollama's `{"type": "function", "function": {...}}`
+  shape -> `POST /api/chat` -> resolve any `tool_calls` via
+  `session.call_tool(...)` -> feed results back -> repeat. The two MCP
+  *prompts* are deliberately not exposed as tools (prompts are
+  user-triggered, not model-decided); `/summarize` and `/reply` fetch them
+  directly via `session.get_prompt(...)`.
+- **A reliability finding worth recording**: asking the model *about
+  itself* ("list your current MCP tools") turned out to be unreliable in a
+  different direction than expected -- rather than answering in plain text,
+  it would sometimes call `create_note`/`search_notes` anyway (with
+  made-up arguments, occasionally leaving stray notes behind), because
+  merely having a non-empty `tools` list in the request measurably biases
+  small models toward calling *something*. Verified this wasn't fixable by
+  prompt-tuning or a lower temperature alone, and held at `qwen2.5:3b` too.
+  Fixed by adding `/tools`, a REPL command that reads the answer straight
+  from the same live `list_tools()` result already used to build the
+  tool-calling payload -- deterministic, and still fully dynamic (no tool
+  names hardcoded anywhere), unlike the first attempt at a fix (a system
+  prompt enumerating tool names by hand), which was correctly rejected
+  during review for hardcoding what MCP already provides dynamically.
+
+**Dockerization** -- `Dockerfile` (`python:3.10-slim-bookworm` + `uv` +
+`tmux`), `docker-compose.yml` (an `ollama` service and an `app` service),
+`docker/entrypoint.sh` (a detached `tmux` session with a `chat` window
+running `local_client.py` and a plain `shell` window), and `startScript.sh`
+as the single command that builds, waits for Ollama's healthcheck, pulls
+the model, and attaches. Two notable fixes along the way:
+- The `app` service bind-mounts the repo at `/app` for live edits, which
+  would otherwise shadow the image's baked `.venv` with an empty host
+  directory (`.venv` is gitignored) -- fixed with a second, named volume
+  nested at `/app/.venv`, which Docker resolves as authoritative over the
+  parent bind mount.
+- The Ollama model cache started as an opaque named Docker volume, then was
+  changed to a bind-mounted `ollama-data/` folder in the repo (tracked via
+  `ollama-data/.gitkeep`, contents gitignored) so the ~1GB+ of downloaded
+  model data is visible/inspectable on the host rather than hidden inside
+  Docker's volume store.
+
+### Verification
+Tested live end-to-end, not just read through: `local_client.py` standalone
+against a bare `ollama` container (tool calls fire correctly, `create_note`
+writes real files, `/summarize`/`/reply` produce real generated text, a bad
+slug fails gracefully); the full `docker compose` stack (the `.venv`-shadow
+fix, `app`-to-`ollama` service-name networking, the `ollama-data` bind mount
+actually receiving the downloaded model); and `./startScript.sh` itself
+end-to-end from a clean state, including the `/tools` fix inside the real
+running container.

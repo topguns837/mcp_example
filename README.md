@@ -82,8 +82,11 @@ usage/commands.
   operates on; feel free to add/edit files directly, or use the tools.
 - **`docs/`** -- `architecture.md` (protocol flows), `testing.md` (every way
   to run/exercise the server), `docker.md` (the Docker/tmux setup).
-- **`PLAN.md`** -- the original project plan (example-project survey,
-  resource breakdown, implementation steps).
+- **`Dockerfile`, `docker-compose.yml`, `docker/entrypoint.sh`,
+  `startScript.sh`** -- the Docker/tmux packaging for method 4 above. See
+  `docs/docker.md`.
+- **`PLAN.md`** -- the project's plan history, kept in-repo as it grew: the
+  original notes-server build, then docs/local-LLM-client/Docker.
 
 ## Gotcha: don't use `from __future__ import annotations` here
 

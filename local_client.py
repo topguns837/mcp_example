@@ -63,6 +63,9 @@ SYSTEM_PROMPT = (
 HELP_TEXT = """\
 Commands:
   <anything else>        chat with the model (it may call create_note / search_notes)
+  /tools                  list the tools available right now, read directly
+                          from the MCP server (no model involved -- reliable
+                          even if you ask the model itself and it gets it wrong)
   /summarize <slug>       ask the model to summarize note <slug>
   /reply <slug> [tone]     ask the model to draft a reply based on note <slug>
                           (tone defaults to "friendly")
@@ -236,6 +239,18 @@ async def repl(session: ClientSession, http_client: httpx.AsyncClient, tools: li
                 return
             if name == "help":
                 print(HELP_TEXT)
+                continue
+            if name == "tools":
+                # Deterministic, zero-hallucination-risk path: read straight
+                # from the live tool list this client already fetched via
+                # MCP's session.list_tools() at connect time -- the same
+                # list handed to the model on every turn -- rather than
+                # asking the model to describe itself in prose (small
+                # models are unreliable at that; see docs/testing.md).
+                for tool in tools:
+                    fn = tool["function"]
+                    summary = fn["description"].strip().splitlines()[0].strip()
+                    print(f"- {fn['name']}: {summary}")
                 continue
             if name == "summarize":
                 if not args:
