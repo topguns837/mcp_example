@@ -1,0 +1,47 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      # Optional: lets you curl/debug Ollama from the host at localhost:11434.
+      - "${OLLAMA_PORT:-11434}:11434"
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    # Uncomment to use an NVIDIA GPU for Ollama (requires the NVIDIA
+    # Container Toolkit on the host). CPU-only is the default so this works
+    # out of the box on any machine. See docs/docker.md.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  app:
+    build: .
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen2.5:1.5b}
+    volumes:
+      # Live-mount the repo so edits on the host show up immediately...
+      - .:/app
+      # ...but keep the image's own baked venv at the nested path, so the
+      # bind mount above (which shadows /app) doesn't wipe it out with an
+      # empty/absent host .venv. Docker resolves the more specific mount as
+      # authoritative, so this survives.
+      - app-venv:/app/.venv
+    tty: true
+    stdin_open: true
+
+volumes:
+  ollama-data:
+  app-venv:

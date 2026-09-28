@@ -1,0 +1,18 @@
+[project]
+name = "mcp-example"
+version = "0.1.0"
+description = "A minimal MCP server (Resources + Tools + Prompts) for learning the protocol"
+readme = "README.md"
+authors = [
+    { name = "topguns837", email = "kharjun4@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp[cli]>=2.2.0",
+]
+
+# This project is a standalone script (notes_server.py), not an installable
+# Python package, so tell uv not to try to build/install one.
+[tool.uv]
+package = false
