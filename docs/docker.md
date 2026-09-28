@@ -66,6 +66,9 @@ cp .env.example .env
 - `OLLAMA_MODEL` -- which model to pull and use (default `qwen2.5:1.5b`; try
   `llama3.2:1b` for something even lighter, or size up if you want more
   reliable tool-calling -- see `docs/testing.md`).
+- `OLLAMA_TEMPERATURE` -- sampling temperature for `local_client.py`
+  (default `0.2`, lower than Ollama's own default of `0.8`, for more
+  consistent answers -- see `docs/testing.md`).
 - `OLLAMA_PORT` -- host port Ollama's API is exposed on, for
   curl/debugging outside the containers (default `11434`).
 

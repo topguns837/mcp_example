@@ -85,6 +85,10 @@ server's tools/prompts the same way a real host would. See
 ollama pull qwen2.5:1.5b   # or your own OLLAMA_MODEL
 uv run python local_client.py
 ```
+Configurable via env vars: `OLLAMA_HOST` (default `http://localhost:11434`),
+`OLLAMA_MODEL` (default `qwen2.5:1.5b`), `OLLAMA_TEMPERATURE` (default `0.2`
+-- see the reliability note below for why it's lower than Ollama's own
+default of `0.8`).
 
 **Via Docker** (Ollama and everything else runs in containers for you):
 ```bash

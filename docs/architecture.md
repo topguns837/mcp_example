@@ -67,14 +67,29 @@ Concretely, `local_client.py`:
    `session.call_tool(name, arguments)`, flattens the result's content
    blocks into text, and appends it back into the conversation as a
    `tool`-role message.
-4. Repeats until the model replies with plain text instead of a tool call.
+4. Repeats until the model replies with plain text instead of a tool call
+   (capped at a handful of hops, in case a small model loops instead of
+   answering).
 
-The two MCP *prompts* (`summarize_note`, `draft_reply`) are intentionally
-**not** exposed to the model as tools -- prompts are meant to be
-user-triggered, not model-decided. `local_client.py`'s `/summarize <slug>`
-and `/reply <slug> [tone]` slash commands call `session.get_prompt(...)`
-directly, then run the returned template through the model once to produce
-actual prose.
+Two things are intentionally **not** routed through this tool-calling loop
+at all, because letting the model decide is either the wrong model of
+who's in control, or, empirically, unreliable at this model size:
+
+- The two MCP *prompts* (`summarize_note`, `draft_reply`) -- prompts are
+  meant to be user-triggered, not model-decided. `local_client.py`'s
+  `/summarize <slug>` and `/reply <slug> [tone]` slash commands call
+  `session.get_prompt(...)` directly, then run the returned template
+  through the model once to produce actual prose.
+- **Answering "what tools do you have"** -- asking the model to describe
+  its own tool list turned out to be unreliable: rather than answering in
+  plain text, it would sometimes call a tool anyway (with made-up
+  arguments), because simply having a non-empty `tools` list in the
+  request measurably biases small models toward calling *something* --
+  see `docs/testing.md` for the reliability writeup. `/tools` sidesteps
+  the model entirely: it reads directly from the same live
+  `session.list_tools()` result already used to build the tool-calling
+  payload, so it's dynamic (no tool names hardcoded anywhere) but also
+  deterministic.
 
 ## Where to look next
 
